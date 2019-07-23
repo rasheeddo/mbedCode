@@ -6,7 +6,8 @@
 #define Header1 0x02
 #define Header2 0x09
 
-Serial uart(PD_5,PD_6);  //Tx2, Rx2
+//Serial uart(PD_5,PD_6);  //Tx2, Rx2
+RawSerial uart(PD_1,PD_0);  //Tx4, Rx4
 Serial pc(USBTX,USBRX);
 
 Timer t;
@@ -92,18 +93,22 @@ int main()
 
         if (ReadOK == true){
             
+            //
+            //pc.printf("i:%d \n",i);
+            //
+            //
             //t.start();
-            pc.printf("i:%d \n",i);
-            //t.stop();
-            //pc.printf("Time: %f seconds\n", t.read());
-            
+            /*
            for(int j=0;j<i;j++){
                 pc.printf("j%d\n",j);
                 pc.printf("Reply: %X\n", Reply[j]);     // print whole string
             }
+            */
+            //t.stop();
+            //pc.printf("Time: %f seconds\n", t.read());
             
             if ((Reply[0] == 0) && (Reply[1] == 0) && (Reply[2] == 0) && (Reply[3] == 0)){
-                pc.printf("startTick false\n");
+                //pc.printf("startTick false\n");
                 startTick = false;
             }
             
@@ -113,8 +118,8 @@ int main()
 
             }
 
-            wait_ms(15);    // wait_ms(15); DONT CHANGE THIS DELAY   This delay act as "pc.printf("Readable : %d\n",uart.readable());"
-
+            wait_ms(1);    // wait_ms(15); DONT CHANGE THIS DELAY   This delay act as "pc.printf("Readable : %d\n",uart.readable());"
+                           // wait_ms(1) mimic all of the printf behavior and it works
 
     }
 
@@ -128,7 +133,7 @@ int main()
     {
         zeroSpeed();
     }
-    /*
+    
     while (true)
     {
         uart.putc(Header1);
@@ -140,9 +145,9 @@ int main()
         uart.putc(0xB4);            // Mode hibyte (don't care)
         uart.putc(0x80);            // Mode lobyte (don't care)
         uart.putc(0xB7);            // Check sum
-        wait_us(23000);
+        wait_ms(23);
 
     }
-    */
+    
     
 }
