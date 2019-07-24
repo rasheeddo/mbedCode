@@ -1,19 +1,72 @@
 
 #include "BrushlessWheels.hpp"
+#include "mbed.h"
+
+RawSerial uart(PD_1,PD_0,9600);
+//Serial pc(USBTX,USBRX,115200);
 
 BrushlessWheels::BrushlessWheels()
 {
-     
     
+    startTick = true;
+    ReadOK = false;
+    Reply[0] = 1;
+    Reply[1] = 1;
+    Reply[2] = 1;
+    Reply[3] = 1;
+    Reply[4] = 1;
+    Reply[5] = 1;
+    Header1 = 0x02;
+    Header2 = 0x09;
 }
 
-void BrushlessWheels::Init()
+int BrushlessWheels::Init()
 {
-    RawSerial uart(PD_1,PD_0);  //Tx4, Rx4
-    waitUnitlFourZero();
+    //pc.printf("Initialized OK...\n");
+    waitUntilFourZero();
+    wait_ms(219);
+    ESCHandShake();
+    for(i=1;i<10;i++)
+    {
+        zeroSpeed();
+    }
+    return 1;
 }
 
-void waitUntilFourZero()
+void BrushlessWheels::Int16ToByteData(unsigned int Data, unsigned char StoreByte[2])
+{
+  // unsigned int can store 16 bit int 
+  StoreByte[0] = (Data & 0xFF00) >> 8;                  //High byte, most right of HEX
+  StoreByte[1] = (Data & 0x00FF);                       //Low byte, most left of HEX
+}
+
+long BrushlessWheels::map(long x, long in_min, long in_max, long out_min, long out_max) 
+{
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+unsigned int BrushlessWheels::RPMToRaw(float rpm)
+{
+  int raw_int;
+  unsigned int out_raw;
+
+    // map rpm to raw value
+    raw_int = (int)map(rpm, 0.0, 144.0, 0, 3200);
+  
+    // In case of negative number, shift mapped number from 32768 to 35968 (for 0.0 to -146.0)
+    if (rpm < 0.0)
+    {
+      out_raw = 32768 + abs(raw_int);
+      }
+    // In case of positive number, use the mapped number for unsigned int type
+    else
+    {
+      out_raw = raw_int;
+      }
+  
+  return out_raw;
+}
+void BrushlessWheels::waitUntilFourZero()
 {
     while (startTick)
     {
@@ -35,19 +88,9 @@ void waitUntilFourZero()
 
         if (ReadOK == true){
             
-            //t.start();
-            pc.printf("i:%d \n",i);
-            //t.stop();
-            //pc.printf("Time: %f seconds\n", t.read());
-            
-           for(int j=0;j<i;j++){
-                pc.printf("j%d\n",j);
-                pc.printf("Reply: %X\n", Reply[j]);     // print whole string
-            }
-            
             if ((Reply[0] == 0) && (Reply[1] == 0) && (Reply[2] == 0) && (Reply[3] == 0)){
-                pc.printf("startTick false\n");
                 startTick = false;
+                //pc.printf("Ready to drive...\n");
             }
             
             // reset value
@@ -55,12 +98,12 @@ void waitUntilFourZero()
             ReadOK = false;
 
             }
-
-            wait_ms(15);    // wait_ms(15); DONT CHANGE THIS DELAY   This delay act as "pc.printf("Readable : %d\n",uart.readable());"
+            wait_ms(1);    // wait_ms(15); DONT CHANGE THIS DELAY   This delay act as "pc.printf("Readable : %d\n",uart.readable());"
+                           // wait_ms(1) mimic all of the printf behavior and it works
     }
 }
 
-void ESCShakeHand()
+void BrushlessWheels::ESCHandShake()
 {
     for(int k=1;k<=20;k++)
     {
@@ -92,7 +135,7 @@ void ESCShakeHand()
     }
 }
 
-void zeroSpeed()
+void BrushlessWheels::zeroSpeed()
 {
     uart.putc(Header1);
     uart.putc(Header2);
@@ -105,4 +148,37 @@ void zeroSpeed()
     uart.putc(0xBF);            // Check sum
     wait_ms(23);
 
+}
+
+void BrushlessWheels::DriveWheels(float rpm1, float rpm2)
+{
+
+    RawInt1 = RPMToRaw(rpm1);
+    RawInt2 = RPMToRaw(rpm2);
+    Int16ToByteData(RawInt1,Motor1SpeedByte);
+    Int16ToByteData(RawInt2,Motor2SpeedByte);
+
+    unsigned char Motor1hibyte = Motor1SpeedByte[0];
+    unsigned char Motor1lobyte = Motor1SpeedByte[1];
+
+    unsigned char Motor2hibyte = Motor2SpeedByte[0];
+    unsigned char Motor2lobyte = Motor2SpeedByte[1];
+
+    unsigned char Modehibyte = 0x00;    // don't care 
+    unsigned char Modelobyte = 0x00;    // don't care
+    unsigned char CheckSum = Header1 + Header2 + Motor1hibyte + Motor1lobyte + Motor2hibyte + Motor2lobyte + Modehibyte + Modelobyte;
+
+    uart.putc(Header1);
+    uart.putc(Header2);
+    uart.putc(Motor1hibyte);
+    uart.putc(Motor1lobyte);
+    uart.putc(Motor2hibyte);
+    uart.putc(Motor2lobyte);
+    uart.putc(Modehibyte);
+    uart.putc(Modelobyte);
+    uart.putc(CheckSum);
+
+    wait_ms(23);                      // DON'T change this delay, it's from hacking
+
+  
 }

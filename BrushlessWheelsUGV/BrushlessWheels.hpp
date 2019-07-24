@@ -21,11 +21,13 @@ class BrushlessWheels
     // input is a float number between -MaxRPM to MaxRPM, minus sign means reverse rotation
     // output is a value from 0 to 3200 for forward rotation and 32769 to 35968 for reverse rotation
 
+    long map(long x, long in_min, long in_max, long out_min, long out_max);
+
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     ///////////////////////////////////// Hand Shake with ESC //////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    void Init();
+    int Init();
     // Init: initialize by do waitUntilFourByte, ESCHandShake and zeroSpeed
     // MUST DO inside the setup() loop on your sketch
 
@@ -45,14 +47,15 @@ class BrushlessWheels
 
     void DriveWheels(float rpm1, float rpm2);
     // DriveWheels: drive both wheels with desired rpm, + for forward - for reverse rotations
+        
+        
 
     private:
-        bool startTick = true;
-        unsigned char ReadByte;
-        unsigned char Reply[6];
+        int i;
+        bool ReadOK;
+        char Reply[6];     // initial value
+        bool startTick;
         int count;
-        int i = 0;
-        bool ReadOK = false;
 
         float MaxRPM;
         unsigned int RawInt1;
@@ -60,9 +63,8 @@ class BrushlessWheels
         unsigned char Motor1SpeedByte[2];
         unsigned char Motor2SpeedByte[2];
 
-        unsigned char Header1 = 0x02;
-        unsigned char Header2 = 0x09;
-
+        unsigned char Header1;
+        unsigned char Header2;
 
 
 };
