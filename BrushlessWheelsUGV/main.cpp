@@ -242,8 +242,8 @@ void UGV_drive()
         {
             ch4_map = 0;
         }
-        //pc.printf("ch2_map: %d\n", ch2_map);
-        //pc.printf("ch4_map: %d\n", ch4_map);
+        pc.printf("ch2_map: %d\n", ch2_map);
+        pc.printf("ch4_map: %d\n", ch4_map);
 
         vehicleControl(ch2_map, ch4_map, motorRPM);     // take ch2 and ch4 value and decide how fast each wheel needs
 
