@@ -12,9 +12,22 @@
 #include "Compass.hpp"
 #include "EthernetInterface.h"
 //#include "ROBOT_CONFIG.hpp"
+//////////////////////////////////////////////////////////////
+// ROBOT_CONFIG.hpp
+//#define _MOAB_IP_ADDRESS "192.168.53.202"
+#define _MOAB_IP_ADDRESS "192.168.11.20"
+#define _NETMASK "255.255.255.0"
+#define _DEFUALT_GATEWAY "192.168.11.1"
+#define _BROADCAST_IP_ADDRESS "192.168.11.255"
+#define _AUTOPILOT_IP_ADDRESS "192.168.11.40"
+///////////////////////
+// This is the "followbot" prototype that I use in AttracLab:
+#define _STEERING_PW_CENTER 0.001424
+#define _STEERING_PW_RANGE 0.000391
+////////////////////////////////////////////////////////////
 
 #define _SBUS_EVENT_FLAG 0x10
-/*
+
 #define _GPS_EVENT_FLAG 0x20
 #define _SHAFT_FALL_EVENT_FLAG 0x40
 #define _PGM_FALL_EVENT_FLAG 0x80
@@ -29,11 +42,11 @@ uint16_t gps_port = 27110;
 uint16_t compass_port = 27111;
 uint16_t odometry_port = 27112;
 bool NETWORK_IS_UP = false;
-*/
+
 // AUTOPILOT //
-uint16_t auto_ch2 = 400;        //1024
+uint16_t auto_ch2 = 1024;        //1024
 uint16_t auto_ch4 = 1024;       //1024
-/*
+
 // GPIN INTERRUPT SHAFT //
 uint64_t _last_shaft_fall = 0;
 uint64_t _last_shaft_rise = 0;
@@ -47,34 +60,34 @@ uint8_t _pgm_value_debounce = 1;
 
 // CHECH PGM BUTTON //
 bool _pgm_notice_sent = false;
-*/
+
 // SBUS //
 struct sbus_udp_payload sbup;
 
 // DRIVE //
 float motorRPM[2];
 
-uint16_t ch2_map;
-uint16_t ch4_map;
+int ch2_map;
+int ch4_map;
 
-// GPR RX INTERRUPT //
-//int gpsMessageLen;
-//char _gpsMsgBuf[2048];
+// GPS RX INTERRUPT //
+int gpsMessageLen;
+char _gpsMsgBuf[2048];
 
 /////////////////////////////// Classes /////////////////////////////// 
 // Network interface //
-/*
+
 EthernetInterface net;
 UDPSocket rx_sock; // one, single thread for RX
 UDPSocket aux_serial_sock; // one, single thread for RX
 UDPSocket tx_sock; // tx will be completely non-blocking
-*/
+
 
 // THREAD //
-//Thread udp_rx_thread;
+Thread udp_rx_thread;
 Thread sbus_reTx_thread;
-//Thread gps_reTx_thread;
-//Thread compass_thread;
+Thread gps_reTx_thread;
+Thread compass_thread;
 //Thread aux_serial_thread;
 //Thread gp_interrupt_messages_thread;
 EventFlags event_flags;
@@ -85,17 +98,17 @@ XWheels drive;      // use Brushless wheels class for UGV
 // SERIAL COM //
 // S.Bus is 100000Hz, 8E2, electrically inverted
 RawSerial sbus_in(NC, PA_3, 100000);  // tx, then rx
-//RawSerial gps_in(PG_14, PG_9, 115200);  //tx, then rx
+RawSerial gps_in(PG_14, PG_9, 115200);  //tx, then rx
 //RawSerial aux_serial1(PA_0, NC, 38400);
 //InterruptIn shaft_encoder(PD_0, PullUp);
 //InterruptIn pgm_switch(PD_1, PullUp);
 Serial pc(USBTX,USBRX,115200);                              // for print out something to PC
 
 // Heartbeat LED //
-//PwmOut hb_led(PA_6);
+PwmOut hb_led(PA_6);
 
 // Compass //
-//Compass compass(PF_15, PF_14); // sda, then scl
+Compass compass(PF_15, PF_14); // sda, then scl
 
 // Flight-mode LEDs //
 DigitalOut myledR(LED3, 0);
@@ -110,7 +123,7 @@ long map(long x, long in_min, long in_max, long out_min, long out_max)
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
-/*
+
 void u_printf(const char *fmt, ...) {
 	va_list args;
 	char buffer[1500];
@@ -127,6 +140,7 @@ void u_printf(const char *fmt, ...) {
 		return;
 	}
 }
+
 void udp_rx_worker() {
 	
 	//Here we receive throttle and steering control from the auto-pilot computer
@@ -143,8 +157,8 @@ void udp_rx_worker() {
 		int n = rx_sock.recvfrom(&sockAddr, inputBuffer, 32);
 
 		if (n == 2*sizeof(uint16_t)) {
-			auto_ch1 = control[0];
-			auto_ch2 = control[1];
+			auto_ch2 = control[0];
+			auto_ch4 = control[1];
 		} else if (n > 0) {
 			inputBuffer[n] = 0;
 			printf("rx %d bytes\n", n);
@@ -155,7 +169,7 @@ void udp_rx_worker() {
 	}
 }
 
-
+/*
 void aux_serial_worker() {
 
 	SocketAddress sockAddr;
@@ -196,9 +210,15 @@ void set_mode_manual() {
 	myledG = 1;
 	myledB = 0;
 	//compass.set_leds(0, 15, 0);
-    ch2_map = map(sbup.ch2,368,1680,100,-100);       // map raw PWM value to understandable scale like -100 to 100 , 0 is mid 
+    //pc.printf("ch2 %d\n", sbup.ch2);
+    //pc.printf("ch4 %d\n", sbup.ch4);
+    ch2_map = map(sbup.ch2,368,1680,100,-100);       // map raw PWM value to understandable scale like -100 to 100 , 0 is mid  
     ch4_map = map(sbup.ch4,368,1680,-100,100);
+    //pc.printf("ch2_map %d\n", ch2_map);
+    //pc.printf("ch4_map %d\n", ch4_map);
     drive.vehicleControl(ch2_map, ch4_map, motorRPM);
+    //pc.printf("rpm1 %f\n", motorRPM[0]);
+    //pc.printf("rpm2 %f\n", motorRPM[1]);
     drive.DriveWheels(motorRPM[0],motorRPM[1]);
 
 }
@@ -208,8 +228,12 @@ void set_mode_auto() {
 	myledG = 0;
 	myledB = 1;
 	//compass.set_leds(0, 0, 15);
+    pc.printf("autoch2 %d\n", auto_ch2);
+    pc.printf("autoch4 %d\n", auto_ch4);
     ch2_map = map(auto_ch2,368,1680,100,-100);       // map raw PWM value to understandable scale like -100 to 100 , 0 is mid 
     ch4_map = map(auto_ch4,368,1680,-100,100);
+    //pc.printf("ch2_map_auto %d\n", ch2_map);
+    //pc.printf("ch4_map_auto %d\n", ch4_map);
     drive.vehicleControl(ch2_map, ch4_map, motorRPM);
     drive.DriveWheels(motorRPM[0],motorRPM[1]);
 }
@@ -312,7 +336,7 @@ void Sbus_Rx_Interrupt() {
 		}
 	}
 }
-/*
+
 void Gps_Rx_Interrupt() {
 	int c;
 	while (gps_in.readable()) {
@@ -353,7 +377,7 @@ void gps_reTx_worker() {
 		}
 	}
 }
-*/
+
 
 void sbus_reTx_worker() {
 
@@ -365,10 +389,10 @@ void sbus_reTx_worker() {
         //pc.printf("Here");
 
 		if (flags_read & osFlagsError) {
-			printf("S.Bus timeout!\n");
+			u_printf("S.Bus timeout!\n");
 			set_mode_sbus_failsafe();
 		} else if (sbup.failsafe) {
-			printf("S.Bus failsafe!\n");
+			u_printf("S.Bus failsafe!\n");
 			set_mode_sbus_failsafe();
 		} else {
 
@@ -387,18 +411,18 @@ void sbus_reTx_worker() {
 
 				set_mode_auto();
 			}
-			/*
+			
 			int retval = tx_sock.sendto(_AUTOPILOT_IP_ADDRESS, sbus_port,
 					(char *) &sbup, sizeof(struct sbus_udp_payload));
 
 			if (retval < 0 && NETWORK_IS_UP) {
 				printf("UDP socket error in sbus_reTx_worker\n");
 			}
-			*/
+			
 		}
 	}
 }
-/*
+
 void compass_worker() {
 
 	int16_t compass_XYZ[3];
@@ -454,10 +478,20 @@ void eth_callback(nsapi_event_t status, intptr_t param) {
 			break;
 	}
 }
-*/
+
 
 int main() {
-    /*
+
+    /// X Drive Initialize ///
+    int initOK;
+    initOK = drive.Init();
+    if(initOK == 1)
+    {
+        pc.printf("Initialized OK!!!\n");
+    }
+    ////////////////////////////
+
+    
 	//  ######################################
 	//  #########################################
 	//  ###########################################
@@ -484,35 +518,35 @@ int main() {
 	net.connect();
 
 	udp_rx_thread.start(udp_rx_worker);
-	aux_serial_thread.start(aux_serial_worker);
+    //aux_serial_thread.start(aux_serial_worker);
 
 	//  ############################################
 	//   END:  setup network and udp socket
 	//  ###########################################
 	//  #########################################
 	//  ######################################
-    */
+    
     
 	sbus_in.format(8, SerialBase::Even, 2);  // S.Bus is 8E2
 	sbus_in.attach(&Sbus_Rx_Interrupt);
-    //gps_in.attach(&Gps_Rx_Interrupt);
+    gps_in.attach(&Gps_Rx_Interrupt);
 
 	sbus_reTx_thread.start(sbus_reTx_worker);
-    /*
+    
     gps_reTx_thread.start(gps_reTx_worker);
 	compass_thread.start(compass_worker);
-	gp_interrupt_messages_thread.start(Gpio_Tx_Worker);
-
+	//gp_interrupt_messages_thread.start(Gpio_Tx_Worker);
+    
 	//shaft_encoder.rise(&Gpin_Interrupt_Shaft);
-	shaft_encoder.fall(&Gpin_Interrupt_Shaft);
+	//shaft_encoder.fall(&Gpin_Interrupt_Shaft);
 
-	pgm_switch.rise(&Gpin_Interrupt_Pgm);
-	pgm_switch.fall(&Gpin_Interrupt_Pgm);
+	//pgm_switch.rise(&Gpin_Interrupt_Pgm);
+	//pgm_switch.fall(&Gpin_Interrupt_Pgm);
 
 	hb_led.period(0.02);
 	hb_led.write(0.0);
 
-
+    
 	// Look for the compass:
 	if (compass.init() < 1) {
 		u_printf("Failed to initialize compass\n");
@@ -526,34 +560,36 @@ int main() {
 				hb_led.write(brightness);
 				//motorControl.trigger_pw_out();
 				wait(0.02);
-				Check_Pgm_Button();
+				//Check_Pgm_Button();
 		}
 		for (int i=0; i < 11; ++i) {
 				float brightness = 1.0 - i/10.0;
 				hb_led.write(brightness);
 				//motorControl.trigger_pw_out();
 				wait(0.02);
-				Check_Pgm_Button();
+				//Check_Pgm_Button();
 		}
 
 		u_printf("heeartbeatZ: %d\n", ct);
-
+    
 		// Report motor values (for convience when setting trim)
-		uint16_t sbus_a = motorControl.get_value_a();
-		float pw_a = motorControl.get_pw_a();
-		u_printf("steering: %d %f\n", sbus_a, pw_a);
+		//uint16_t sbus_a = motorControl.get_value_a();
+		//float pw_a = motorControl.get_pw_a();
+		//u_printf("steering: %d %f\n", sbus_a, pw_a);
 
-		uint16_t sbus_b = motorControl.get_value_b();
-		float pw_b = motorControl.get_pw_b();
-		u_printf("throttle: %d %f\n", sbus_b, pw_b);
+		//uint16_t sbus_b = motorControl.get_value_b();
+		//float pw_b = motorControl.get_pw_b();
+		//u_printf("throttle: %d %f\n", sbus_b, pw_b);
+        
 	}
-
+    
    
 	// Close the socket and bring down the network interface
-	rx_sock.close();
+	
+    rx_sock.close();
 	tx_sock.close();
 	net.disconnect();
-    */
+    
 
 	return 0;
 }
