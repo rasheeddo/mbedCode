@@ -34,6 +34,7 @@ private:
 	int _compass_addr8bit;
 	int _leds_addr8bit;
 
+	void _write_register(char, char);
 
 };
 
