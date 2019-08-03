@@ -8,18 +8,26 @@
 #include "rtos.h"
 #include "SbusParser.hpp"
 #include "XWheels.hpp"
-#include "UbloxParser.hpp"
+//#include "UbloxParser.hpp"
 #include "Compass.hpp"
 #include "EthernetInterface.h"
 //#include "ROBOT_CONFIG.hpp"
 //////////////////////////////////////////////////////////////
 // ROBOT_CONFIG.hpp
 //#define _MOAB_IP_ADDRESS "192.168.53.202"
+/* // Office LAN use
 #define _MOAB_IP_ADDRESS "192.168.11.20"
 #define _NETMASK "255.255.255.0"
 #define _DEFUALT_GATEWAY "192.168.11.1"
 #define _BROADCAST_IP_ADDRESS "192.168.11.255"
 #define _AUTOPILOT_IP_ADDRESS "192.168.11.40"
+*/
+// Field LAN Use
+#define _MOAB_IP_ADDRESS "192.168.8.20"
+#define _NETMASK "255.255.255.0"
+#define _DEFUALT_GATEWAY "192.168.8.1"
+#define _BROADCAST_IP_ADDRESS "192.168.8.255"
+#define _AUTOPILOT_IP_ADDRESS "192.168.8.143"
 ///////////////////////
 // This is the "followbot" prototype that I use in AttracLab:
 #define _STEERING_PW_CENTER 0.001424
@@ -38,7 +46,8 @@ uint16_t debug_port = 31337;
 uint16_t sbus_port = 31338;
 uint16_t button_port = 31345;
 uint16_t aux_serial_port_1 = 31341;
-uint16_t gps_port = 27110;
+//uint16_t gps_port = 27110;
+uint16_t gps_port_nmea = 27113; // NMEA
 uint16_t compass_port = 27111;
 uint16_t odometry_port = 27112;
 bool NETWORK_IS_UP = false;
@@ -71,8 +80,13 @@ int ch2_map;
 int ch4_map;
 
 // GPS RX INTERRUPT //
+// Incoming buffer, from serial port:
+char _gpsRxBuf[1500];
+int _gpsRxBufIdx = 0;
+
+// Outgoing buffer, via network UDP:
+char _gpsTxBuf[1500];
 int gpsMessageLen;
-char _gpsMsgBuf[2048];
 
 /////////////////////////////// Classes /////////////////////////////// 
 // Network interface //
@@ -116,7 +130,7 @@ DigitalOut myledG(LED1, 0);
 DigitalOut myledB(LED2, 0);
 
 SbusParser sbusParser(&sbup);
-UbloxParser ubloxParser;
+//UbloxParser ubloxParser;
 
 long map(long x, long in_min, long in_max, long out_min, long out_max) 
 {
@@ -342,13 +356,14 @@ void Gps_Rx_Interrupt() {
 	while (gps_in.readable()) {
 
 		c = gps_in.getc();
-		int status = ubloxParser.rx_char(c);
-		//gpsMessageLen = ubloxParser.rx_char(c);
+		_gpsRxBuf[_gpsRxBufIdx] = c;
+		_gpsRxBufIdx++;
 
-		if (status > 0) {
-			memcpy(_gpsMsgBuf, ubloxParser._rxBuf, status);
-			gpsMessageLen = status;
+		if ((c == 0x0a) || (_gpsRxBufIdx > 1400)) {
+			memcpy(_gpsTxBuf, _gpsRxBuf, _gpsRxBufIdx);
+			gpsMessageLen = _gpsRxBufIdx;
 			event_flags.set(_GPS_EVENT_FLAG);
+			_gpsRxBufIdx = 0;
 		}
 	}
 }
@@ -358,22 +373,20 @@ void gps_reTx_worker() {
 	uint32_t flags_read;
 
 	while (true) {
-		flags_read = event_flags.wait_any(_GPS_EVENT_FLAG, 500);
+		flags_read = event_flags.wait_any(_GPS_EVENT_FLAG, 1200);
 
 		if (flags_read & osFlagsError) {
 
 			u_printf("GPS timeout!\n");
 
-		} else if (gpsMessageLen>8 && gpsMessageLen <2000) {
+		} else {
 
-			int retval = tx_sock.sendto(_BROADCAST_IP_ADDRESS, gps_port,
-					_gpsMsgBuf, gpsMessageLen);
+			int retval = tx_sock.sendto(_BROADCAST_IP_ADDRESS, gps_port_nmea,
+					_gpsTxBuf, gpsMessageLen);
 
 			if (retval < 0 && NETWORK_IS_UP) {
 				printf("UDP socket error in gps_reTx_worker\n");
 			}
-		} else {
-			u_printf("gps msglen: %d\n", gpsMessageLen);
 		}
 	}
 }
@@ -427,6 +440,7 @@ void compass_worker() {
 
 	int16_t compass_XYZ[3];
 
+	int count = 0;
 	while (true) {
 		if (compass.get_data(compass_XYZ)) {
 
@@ -440,6 +454,21 @@ void compass_worker() {
 		}
 
 		wait(0.05); // 20Hz
+
+		count++;
+		if (count > 100) {
+			// Just in case the compass gets disconnected, we'll ocasionally re-init
+			compass.init();
+			count = 0;
+			// UBLOX config command to enable 5 updates per second:
+			const char UBX_CFG_RATE[] = {
+					0xb5, 0x62, 0x06, 0x08, 0x06, 0x00,
+					0x28, 0x00, 0x05, 0x00, 0x00, 0x00, 0x41, 0xb8};
+
+			for (int i=0; i<14; i++) {
+				gps_in.putc(UBX_CFG_RATE[i]);
+			}
+		}
 	}
 }
 

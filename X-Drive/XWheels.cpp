@@ -2,7 +2,7 @@
 #include "XWheels.hpp"
 #include "mbed.h"
 // VEHICLE CONTROL , UGV DRIVE
-#define MAX_RPM 80         // Max RPM of the wheels, this is limited by wheels itself. Default is 144
+#define MAX_RPM 144         // Max RPM of the wheels, this is limited by wheels itself. Default is 144
 #define ZERO_RPM 0          // No speed
 #define MIN_STICK 10        // after mapped
 #define MAX_STICK 100       // after mapped
