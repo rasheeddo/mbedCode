@@ -4,8 +4,11 @@
 // VEHICLE CONTROL , UGV DRIVE
 #define MAX_RPM 144         // Max RPM of the wheels, this is limited by wheels itself. Default is 144
 #define ZERO_RPM 0          // No speed
-#define MIN_STICK 10        // after mapped
-#define MAX_STICK 100       // after mapped
+#define MIN_STICK 360       
+#define MAX_STICK 1673      
+#define MIN_DEADBAND 1019
+#define MAX_DEADBAND 1029
+#define MID_STICK 1024
 #define DIVIDER 2           // a divider of another wheel's speed, e.g. 2 is half speed of the another wheel's speed
 
 RawSerial uart(PD_1,PD_0,9600);
@@ -51,13 +54,51 @@ long XWheels::map(long x, long in_min, long in_max, long out_min, long out_max)
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
+float XWheels::LowRPMCompensation_Right(float InRPM)
+{   
+    // Only rpm from 5 to 40 
+    float ComRPM;
+    float E7 = 0.0000001;
+    float E5 = 0.00001;
+    float xR = abs(InRPM);     // Right Wheel input rpm
+    float sign = abs(InRPM)/InRPM;
+
+    //float rightErr = (-9.76*E7*(xR*xR*xR*xR*xR) + 0.000117*(xR*xR*xR*xR) - 0.00519*(xR*xR*xR) + 0.103*(xR*xR) - 0.999*xR + 5.96)*2.0;
+    float rightErr = (-4.15*E7*(xR*xR*xR*xR*xR) + 4.65*E5*(xR*xR*xR*xR) - 0.00188*(xR*xR*xR) + 0.034*(xR*xR) - 0.357*xR + 4.06)*1.8;
+
+    printf("rightErr %f \n", rightErr);
+    ComRPM = InRPM + (sign)*abs(rightErr);
+
+    return ComRPM;
+
+}
+
+float XWheels::LowRPMCompensation_Left(float InRPM)
+{
+    // Only rpm from 5 to 40 
+    float ComRPM;
+    float E7 = 0.0000001;
+    float E5 = 0.00001;
+    float xL = abs(InRPM);     // Left Wheel input rpm
+    float sign = abs(InRPM)/InRPM;
+
+    float leftErr = (-4.15*E7*(xL*xL*xL*xL*xL) + 4.65*E5*(xL*xL*xL*xL) - 0.00188*(xL*xL*xL) + 0.034*(xL*xL) - 0.357*xL + 4.06)*1.85;
+    
+    printf("leftErr %f \n", leftErr);
+    ComRPM = InRPM + (sign)*abs(leftErr);
+
+    return ComRPM;
+}
+
 unsigned int XWheels::RPMToRaw(float rpm)
 {
   int raw_int;
   unsigned int out_raw;
 
+
     // map rpm to raw value
-    raw_int = (int)map(rpm, 0.0, 144.0, 0, 3200);
+    raw_int = (int)map(rpm, 0.0, 144.0, 0, 3200);   // for linear approximate, but low RPM is not collect
+ 
   
     // In case of negative number, shift mapped number from 32768 to 35968 (for 0.0 to -146.0)
     if (rpm < 0.0)
@@ -70,6 +111,36 @@ unsigned int XWheels::RPMToRaw(float rpm)
       out_raw = raw_int;
       }
   
+  return out_raw;
+}
+
+unsigned int XWheels::RPMToRaw2(float rpm)
+{
+  int raw_int;
+  unsigned int out_raw;
+
+    if (rpm >= 0.0 && rpm < 40.0)
+    {
+        // map rpm to raw value
+        raw_int = (int)map(rpm, 0.0, 39.0, 70, 866);
+    }
+    else if(rpm < 0.0 && rpm > -40.0)
+    {
+        raw_int = (int)map(rpm, 0.0, -39.0, 32845, 33634); 
+    }
+    else if(rpm >= 40.0)
+    {
+        raw_int = (int)map(rpm, 40.0, 144.0, 888, 3200); 
+    }
+    else if(rpm <= -40.0)
+    {
+        raw_int = (int)map(rpm, -40.0, -144.0, 33656, 35968); 
+        //out_raw = 32768 + abs(raw_int);
+    }
+
+    out_raw = raw_int;
+   
+    
   return out_raw;
 }
 void XWheels::waitUntilFourZero()
@@ -157,10 +228,41 @@ void XWheels::zeroSpeed()
 }
 
 void XWheels::DriveWheels(float rpm1, float rpm2)
-{
+{  
+    float Out_RPM_Right;
+    float Out_RPM_Left;
+    /*
+    // Both rpm right and left are low
+    if (abs(rpm1) >= 5.0 && abs(rpm1) <=40.0 && abs(rpm2) >= 5.0 && abs(rpm2) <=40.0)
+    {
+        Out_RPM_Right = LowRPMCompensation_Right(rpm1);
+        Out_RPM_Left = LowRPMCompensation_Left(rpm2);
 
-    RawInt1 = RPMToRaw(rpm1);
-    RawInt2 = RPMToRaw(rpm2);
+    }
+    else if(abs(rpm1) >= 5.0 && abs(rpm1) <=40.0)
+    {
+        Out_RPM_Right = LowRPMCompensation_Right(rpm1);
+        Out_RPM_Left = rpm2;
+    }
+    
+    else if (abs(rpm2) >= 5.0 && abs(rpm2) <=40.0)
+    {   
+        Out_RPM_Right = rpm1;
+        Out_RPM_Left = LowRPMCompensation_Left(rpm2);
+    }
+    else
+    {
+        Out_RPM_Right = rpm1;
+        Out_RPM_Left = rpm2;
+    }
+    printf("Out_Right %f\n", Out_RPM_Right);
+    printf("Out_Left %f\n", Out_RPM_Left);
+    */
+    
+    //Out_RPM_Right = rpm1;
+    //Out_RPM_Left = rpm2;
+    RawInt1 = RPMToRaw2(rpm1);
+    RawInt2 = RPMToRaw2(rpm2);
     Int16ToByteData(RawInt1,Motor1SpeedByte);
     Int16ToByteData(RawInt2,Motor2SpeedByte);
 
@@ -193,60 +295,66 @@ void XWheels::vehicleControl(int UD_ch, int LR_ch, float MotorRPM[2])
 {   
     // UD_ch is up-down stick channel, in this case is ch2
     // LR_ch is left-right stick channel, in this case is ch4
-    // MIN_STICK is 10, a minimum value of stick after mapped from PWM (from map it was 0, but some channel it's not 0, so set it to 10 as minimum)
-    // MAX_STICK is 100, a maximum value of stick after mapped from PWM
     // MotorRPM[0] is a right wheel
     // MotorRPM[1] is a left wheel
 
     /////////////////////////////////////////////////////// STRAIGHT DRIVE ////////////////////////////////////////////////////////////////
     // In case the stick near mid for both ch2 and ch4
-    if (LR_ch < MIN_STICK && LR_ch > -MIN_STICK && UD_ch < MIN_STICK && UD_ch > -MIN_STICK)
+    if (LR_ch <= MAX_DEADBAND && LR_ch >= MIN_DEADBAND && UD_ch <= MAX_DEADBAND && UD_ch >= MIN_DEADBAND)
     {
         MotorRPM[0] = 0.0;
         MotorRPM[1] = 0.0;
     }
 
     // user push ch2 up or down, UGV drive forward or backward, two wheels same speed and direction
-    else if(LR_ch <= MIN_STICK && LR_ch >= -MIN_STICK && (UD_ch >= MIN_STICK || UD_ch <= -MIN_STICK))
+    else if(LR_ch <= MAX_DEADBAND && LR_ch >= MIN_DEADBAND && (UD_ch > MAX_DEADBAND || UD_ch < MIN_DEADBAND))
     {
-        MotorRPM[0] = (float)map(UD_ch, -MAX_STICK, MAX_STICK, -MAX_RPM, MAX_RPM);
+        MotorRPM[0] = (float)map(UD_ch, MIN_STICK, MAX_STICK, -MAX_RPM, MAX_RPM);
         MotorRPM[1] = MotorRPM[0];
 
     }
     /////////////////////////////////////////////////////////// TURNS /////////////////////////////////////////////////////////////////////
     // user push ch4 left or right, UGV turns left or right, two wheels same speed but reverse direction
-    else if(UD_ch <= MIN_STICK && UD_ch >= -MIN_STICK && (LR_ch >= MIN_STICK || LR_ch <= -MIN_STICK))
+    else if(UD_ch <= MAX_DEADBAND && UD_ch >= MIN_DEADBAND && (LR_ch >= MAX_DEADBAND || LR_ch <= MIN_DEADBAND))
     {
-        MotorRPM[1] = (float)map(LR_ch, -MAX_STICK, MAX_STICK, -MAX_RPM, MAX_RPM);
+        MotorRPM[1] = (float)map(LR_ch, MIN_STICK, MAX_STICK, -MAX_RPM, MAX_RPM);
         MotorRPM[0] = -MotorRPM[1];
     }
     /////////////////////////////////////////////////////////// CURVES /////////////////////////////////////////////////////////////////////
     // user push both ch2 and ch4 diagonally (first quadrant), UGV curves to the right forward, one wheels is half speed of the another one
-    else if(UD_ch >= MIN_STICK && LR_ch >= MIN_STICK)
+    else if(UD_ch > MAX_DEADBAND && LR_ch > MAX_DEADBAND)
     {
-        MotorRPM[1] = (float)map(UD_ch, MIN_STICK, MAX_STICK, ZERO_RPM, MAX_RPM);
-        MotorRPM[0] = MotorRPM[1]/DIVIDER;
-    }
+        MotorRPM[1] = (float)map(UD_ch, MAX_DEADBAND+1, MAX_STICK, ZERO_RPM, MAX_RPM);
+        float SCALE = (float)map(LR_ch, MAX_DEADBAND+1, MAX_STICK, 100.0, 200.0);
+        MotorRPM[0] = MotorRPM[1]*100.0/SCALE;
+        //printf("SCALE %f\n",SCALE);
+    } 
 
      // user push both ch2 and ch4 diagonally (second quadrant), UGV curves to the left forward, one wheels is half speed of the another one
-    else if(UD_ch >= MIN_STICK && LR_ch <= -MIN_STICK)
+    else if(UD_ch > MAX_DEADBAND && LR_ch < MIN_DEADBAND)
     {
-        MotorRPM[0] = (float)map(UD_ch, MIN_STICK, MAX_STICK, ZERO_RPM, MAX_RPM);
-        MotorRPM[1] = MotorRPM[0]/DIVIDER;
+        MotorRPM[0] = (float)map(UD_ch, MAX_DEADBAND+1, MAX_STICK, ZERO_RPM, MAX_RPM);
+        float SCALE = (float)map(LR_ch, MIN_DEADBAND-1, MIN_STICK, 100.0, 200.0);
+        MotorRPM[1] = MotorRPM[0]*100.0/SCALE;
+        //printf("SCALE %f\n",SCALE);
     }   
 
     // user push both ch2 and ch4 diagonally (third quadrant), UGV curves to the left backward, one wheels is half speed of the another one
-    else if(UD_ch <= -MIN_STICK && LR_ch <= -MIN_STICK)
+    else if(UD_ch < MIN_DEADBAND && LR_ch < MIN_DEADBAND)
     {
-        MotorRPM[0] = (float)map(UD_ch, -MIN_STICK, -MAX_STICK, ZERO_RPM, -MAX_RPM);
-        MotorRPM[1] = MotorRPM[0]/DIVIDER;
+        MotorRPM[0] = (float)map(UD_ch, MIN_DEADBAND-1, MIN_STICK, ZERO_RPM, -MAX_RPM);
+        float SCALE = (float)map(LR_ch, MIN_DEADBAND-1, MIN_STICK, 100.0, 200.0);
+        MotorRPM[1] = MotorRPM[0]*100.0/SCALE;
+        //printf("SCALE %f\n",SCALE);
     }
 
      // user push both ch2 and ch4 diagonally (fourth quadrant), UGV curves to the right backward, one wheels is half speed of the another one
-    else if(UD_ch <= -MIN_STICK && LR_ch >= MIN_STICK)
+    else if(UD_ch < MIN_DEADBAND && LR_ch > MAX_DEADBAND)
     {
-        MotorRPM[1] = (float)map(UD_ch, -MIN_STICK, -MAX_STICK, ZERO_RPM, -MAX_RPM);
-        MotorRPM[0] = MotorRPM[1]/DIVIDER;
+        MotorRPM[1] = (float)map(UD_ch, MIN_DEADBAND-1, MIN_STICK, ZERO_RPM, -MAX_RPM);
+        float SCALE = (float)map(LR_ch, MAX_DEADBAND+1, MAX_STICK, 100.0, 200.0);
+        MotorRPM[0] = MotorRPM[1]*100.0/SCALE;
+        //printf("SCALE %f\n",SCALE);
     }  
    
 }

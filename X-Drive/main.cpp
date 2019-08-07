@@ -15,20 +15,21 @@
 //////////////////////////////////////////////////////////////
 // ROBOT_CONFIG.hpp
 //#define _MOAB_IP_ADDRESS "192.168.53.202"
-/* // Office LAN use
+ // Office LAN use
 #define _MOAB_IP_ADDRESS "192.168.11.20"
 #define _NETMASK "255.255.255.0"
 #define _DEFUALT_GATEWAY "192.168.11.1"
 #define _BROADCAST_IP_ADDRESS "192.168.11.255"
 #define _AUTOPILOT_IP_ADDRESS "192.168.11.40"
-*/
+/*
 // Field LAN Use
 #define _MOAB_IP_ADDRESS "192.168.8.20"
 #define _NETMASK "255.255.255.0"
 #define _DEFUALT_GATEWAY "192.168.8.1"
 #define _BROADCAST_IP_ADDRESS "192.168.8.255"
-#define _AUTOPILOT_IP_ADDRESS "192.168.8.143"
+#define _AUTOPILOT_IP_ADDRESS "192.168.8.144"
 ///////////////////////
+*/
 // This is the "followbot" prototype that I use in AttracLab:
 #define _STEERING_PW_CENTER 0.001424
 #define _STEERING_PW_RANGE 0.000391
@@ -226,15 +227,12 @@ void set_mode_manual() {
 	//compass.set_leds(0, 15, 0);
     //pc.printf("ch2 %d\n", sbup.ch2);
     //pc.printf("ch4 %d\n", sbup.ch4);
-    ch2_map = map(sbup.ch2,368,1680,100,-100);       // map raw PWM value to understandable scale like -100 to 100 , 0 is mid  
-    ch4_map = map(sbup.ch4,368,1680,-100,100);
-    //pc.printf("ch2_map %d\n", ch2_map);
-    //pc.printf("ch4_map %d\n", ch4_map);
-    drive.vehicleControl(ch2_map, ch4_map, motorRPM);
-    //pc.printf("rpm1 %f\n", motorRPM[0]);
-    //pc.printf("rpm2 %f\n", motorRPM[1]);
-    drive.DriveWheels(motorRPM[0],motorRPM[1]);
 
+    drive.vehicleControl(sbup.ch2, sbup.ch4, motorRPM);
+    pc.printf("rpm1 %f\n", motorRPM[0]);
+    pc.printf("rpm2 %f\n", motorRPM[1]);
+    drive.DriveWheels(motorRPM[0],motorRPM[1]);
+    //drive.DriveWheels(-70.0,-70.0);
 }
 
 void set_mode_auto() {

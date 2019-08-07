@@ -16,10 +16,16 @@ class XWheels
     // unsigned int stores 16 bits as an integer
     // Pass by reference using array StoreByte[2], this is output of the function
 
+    float LowRPMCompensation_Right(float InRPM);
+    
+    float LowRPMCompensation_Left(float InRPM);
+
     unsigned int RPMToRaw(float rpm);
     // RPMToRaw: convert rotation per minute value to raw value
     // input is a float number between -MaxRPM to MaxRPM, minus sign means reverse rotation
     // output is a value from 0 to 3200 for forward rotation and 32769 to 35968 for reverse rotation
+
+    unsigned int RPMToRaw2(float rpm);
 
     long map(long x, long in_min, long in_max, long out_min, long out_max);
 
