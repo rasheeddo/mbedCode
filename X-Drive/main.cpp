@@ -13,23 +13,13 @@
 #include "EthernetInterface.h"
 //#include "ROBOT_CONFIG.hpp"
 //////////////////////////////////////////////////////////////
-// ROBOT_CONFIG.hpp
-//#define _MOAB_IP_ADDRESS "192.168.53.202"
- // Office LAN use
-#define _MOAB_IP_ADDRESS "192.168.11.20"
-#define _NETMASK "255.255.255.0"
-#define _DEFUALT_GATEWAY "192.168.11.1"
-#define _BROADCAST_IP_ADDRESS "192.168.11.255"
-#define _AUTOPILOT_IP_ADDRESS "192.168.11.40"
-/*
+// ROBOT_CONFIG //
+// Office LAN use
+//#include "ROBOT_CONFIG_XDRIVE_OfficeLAN.hpp"
 // Field LAN Use
-#define _MOAB_IP_ADDRESS "192.168.8.20"
-#define _NETMASK "255.255.255.0"
-#define _DEFUALT_GATEWAY "192.168.8.1"
-#define _BROADCAST_IP_ADDRESS "192.168.8.255"
-#define _AUTOPILOT_IP_ADDRESS "192.168.8.144"
+#include "ROBOT_CONFIG_XDRIVE_GLiNet.hpp"
 ///////////////////////
-*/
+
 // This is the "followbot" prototype that I use in AttracLab:
 #define _STEERING_PW_CENTER 0.001424
 #define _STEERING_PW_RANGE 0.000391
@@ -48,7 +38,7 @@ uint16_t sbus_port = 31338;
 uint16_t button_port = 31345;
 uint16_t aux_serial_port_1 = 31341;
 //uint16_t gps_port = 27110;
-uint16_t gps_port_nmea = 27113; // NMEA
+uint16_t gps_port_nmea = 27113; // NMEA 27113
 uint16_t compass_port = 27111;
 uint16_t odometry_port = 27112;
 bool NETWORK_IS_UP = false;
@@ -56,6 +46,10 @@ bool NETWORK_IS_UP = false;
 // AUTOPILOT //
 uint16_t auto_ch2 = 1024;        //1024
 uint16_t auto_ch4 = 1024;       //1024
+float rpmR;
+float rpmL;
+uint16_t Raw_rpmR;
+uint16_t Raw_rpmL;
 
 // GPIN INTERRUPT SHAFT //
 uint64_t _last_shaft_fall = 0;
@@ -172,8 +166,11 @@ void udp_rx_worker() {
 		int n = rx_sock.recvfrom(&sockAddr, inputBuffer, 32);
 
 		if (n == 2*sizeof(uint16_t)) {
-			auto_ch2 = control[0];
-			auto_ch4 = control[1];
+			//auto_ch2 = control[0];
+			//auto_ch4 = control[1];
+            Raw_rpmR = control[0];
+            Raw_rpmL = control[1];
+
 		} else if (n > 0) {
 			inputBuffer[n] = 0;
 			printf("rx %d bytes\n", n);
@@ -232,7 +229,7 @@ void set_mode_manual() {
     pc.printf("rpm1 %f\n", motorRPM[0]);
     pc.printf("rpm2 %f\n", motorRPM[1]);
     drive.DriveWheels(motorRPM[0],motorRPM[1]);
-    //drive.DriveWheels(-70.0,-70.0);
+    //drive.DriveWheels(1.0,1.0);
 }
 
 void set_mode_auto() {
@@ -240,14 +237,19 @@ void set_mode_auto() {
 	myledG = 0;
 	myledB = 1;
 	//compass.set_leds(0, 0, 15);
-    pc.printf("autoch2 %d\n", auto_ch2);
-    pc.printf("autoch4 %d\n", auto_ch4);
-    ch2_map = map(auto_ch2,368,1680,100,-100);       // map raw PWM value to understandable scale like -100 to 100 , 0 is mid 
-    ch4_map = map(auto_ch4,368,1680,-100,100);
+    //pc.printf("autoch2 %d\n", auto_ch2);
+    //pc.printf("autoch4 %d\n", auto_ch4);
+    //ch2_map = map(auto_ch2,368,1680,100,-100);       // map raw PWM value to understandable scale like -100 to 100 , 0 is mid 
+    //ch4_map = map(auto_ch4,368,1680,-100,100);
     //pc.printf("ch2_map_auto %d\n", ch2_map);
     //pc.printf("ch4_map_auto %d\n", ch4_map);
-    drive.vehicleControl(ch2_map, ch4_map, motorRPM);
-    drive.DriveWheels(motorRPM[0],motorRPM[1]);
+    //drive.vehicleControl(ch2_map, ch4_map, motorRPM);
+    //drive.DriveWheels(motorRPM[0],motorRPM[1]);
+    rpmR = drive.IntToFloat(Raw_rpmR);
+    rpmL = drive.IntToFloat(Raw_rpmL);
+    drive.DriveWheels(rpmR,rpmL);
+    printf("rpmR %f\n", rpmR);
+    printf("rpmL %f\n", rpmL);
 }
 
 /*
