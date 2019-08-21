@@ -16,18 +16,19 @@ class XWheels
     // unsigned int stores 16 bits as an integer
     // Pass by reference using array StoreByte[2], this is output of the function
 
-    float LowRPMCompensation_Right(float InRPM);
-    
-    float LowRPMCompensation_Left(float InRPM);
-
     unsigned int RPMToRaw(float rpm);
     // RPMToRaw: convert rotation per minute value to raw value
     // input is a float number between -MaxRPM to MaxRPM, minus sign means reverse rotation
     // output is a value from 0 to 3200 for forward rotation and 32769 to 35968 for reverse rotation
+    // Not using due to the there are two linear behavior of the wheels for low and high speed
 
     unsigned int RPMToRaw2(float rpm);
-
+    // similarly to RPMToRaw, but this mapping function cover the two linear behavior of low and high speed
+    
     float IntToFloat(int intValue);
+    // IntToFloat : this function is used to converter the incoming integer from autopilot to float value
+    // input is the speed value in integer form
+    // output is the rpm value in float form
 
     long map(long x, long in_min, long in_max, long out_min, long out_max);
 
@@ -73,9 +74,27 @@ class XWheels
         unsigned int RawInt2;
         unsigned char Motor1SpeedByte[2];
         unsigned char Motor2SpeedByte[2];
-
+        // normal sending
         unsigned char Header1;
         unsigned char Header2;
+        // handshake sending
+        unsigned char InitHeader1;
+        unsigned char InitHeader2;
+        unsigned char ForwardAcc;
+        unsigned char ForwardDelay;
+        unsigned char BrakeDis;
+        unsigned char TurnAcc;
+        unsigned char TurnDelay;
+        unsigned char AccTimeOfStart;
+        unsigned char SenRocker;
+        unsigned char UnderVolt1;
+        unsigned char UnderVolt2;
+        unsigned char StartSpeed;
+        unsigned char DriveMode;
+        unsigned char PhaseLMotor;
+        unsigned char PhaseRMotor;
+        unsigned char MotorConfig;
+        unsigned char InitCheckSum;
 
 
 };

@@ -15,9 +15,9 @@
 //////////////////////////////////////////////////////////////
 // ROBOT_CONFIG //
 // Office LAN use
-//#include "ROBOT_CONFIG_XDRIVE_OfficeLAN.hpp"
+#include "ROBOT_CONFIG_XDRIVE_OfficeLAN.hpp"
 // Field LAN Use
-#include "ROBOT_CONFIG_XDRIVE_GLiNet.hpp"
+//#include "ROBOT_CONFIG_XDRIVE_GLiNet.hpp"
 ///////////////////////
 
 // This is the "followbot" prototype that I use in AttracLab:
@@ -106,8 +106,10 @@ XWheels drive;      // use Brushless wheels class for UGV
 
 // SERIAL COM //
 // S.Bus is 100000Hz, 8E2, electrically inverted
-RawSerial sbus_in(NC, PA_3, 100000);  // tx, then rx
-RawSerial gps_in(PG_14, PG_9, 115200);  //tx, then rx
+RawSerial sbus_in(NC, PD_2, 100000);  // tx, then rx
+//RawSerial sbus_in(NC, PA_3, 100000);  // tx, then rx
+RawSerial gps_in(PE_8, PE_7, 38400);  //tx, then rx
+//RawSerial gps_in(PG_14, PG_9, 115200);  // tx, then rx
 //RawSerial aux_serial1(PA_0, NC, 38400);
 //InterruptIn shaft_encoder(PD_0, PullUp);
 //InterruptIn pgm_switch(PD_1, PullUp);
@@ -117,7 +119,8 @@ Serial pc(USBTX,USBRX,115200);                              // for print out som
 PwmOut hb_led(PA_6);
 
 // Compass //
-Compass compass(PF_15, PF_14); // sda, then scl
+Compass compass(PB_11, PB_10); // sda, then scl
+//Compass compass(PF_15, PF_14); // sda, then scl
 
 // Flight-mode LEDs //
 DigitalOut myledR(LED3, 0);
@@ -229,7 +232,7 @@ void set_mode_manual() {
     pc.printf("rpm1 %f\n", motorRPM[0]);
     pc.printf("rpm2 %f\n", motorRPM[1]);
     drive.DriveWheels(motorRPM[0],motorRPM[1]);
-    //drive.DriveWheels(1.0,1.0);
+    //drive.DriveWheels(144.0,144.0);
 }
 
 void set_mode_auto() {
@@ -511,7 +514,7 @@ void eth_callback(nsapi_event_t status, intptr_t param) {
 
 int main() {
 
-    /// X Drive Initialize ///
+        /// X Drive Initialize ///
     int initOK;
     initOK = drive.Init();
     if(initOK == 1)
@@ -519,7 +522,6 @@ int main() {
         pc.printf("Initialized OK!!!\n");
     }
     ////////////////////////////
-
     
 	//  ######################################
 	//  #########################################
@@ -611,6 +613,8 @@ int main() {
 		//u_printf("throttle: %d %f\n", sbus_b, pw_b);
         
 	}
+    
+
     
    
 	// Close the socket and bring down the network interface

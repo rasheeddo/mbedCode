@@ -27,8 +27,31 @@ XWheels::XWheels()
     Reply[3] = 1;
     Reply[4] = 1;
     Reply[5] = 1;
+
+    // Sending Command
     Header1 = 0x02;
     Header2 = 0x09;
+
+    // Initialized of 17 bytes
+    InitHeader1 = 0x01;     // always constant
+    InitHeader2 = 0x11;     // always constant
+    ForwardAcc = 0x64;      // 0x00 to 0x64   [0-100]   An acceleration when changing speed value
+    ForwardDelay = 0x00;    // 0x00 t0 0x05   [0-5]     A delay before start to go
+    BrakeDis = 0x0A;        // 0x00 to 0x64   [0-100]   Brake distance, should be as short as possible (rigid brake)
+    TurnAcc = 0x32;         // 0x00 to 0x64   [0-100]   Turning acceleration, when two wheels has reverse direction
+    TurnDelay = 0x01;       // 0x00 t0 0x05   [0-5]     A delay before start turning
+    AccTimeOfStart = 0x00;  // 0x00 to 0x32   [0-50]    increase this will make wheels slower
+    SenRocker = 0x83;       // Don't need to change     this is for curving motion, we have our own calculation.
+    UnderVolt1 = 0x14;      // 0x12 -> 18.0V, 0x13 -> 19.0V, 0x14 -> 20.0V, 0x15 -> 21.0V, 0x16 -> 22.0V
+    UnderVolt2 = 0x05;      // 0x01 to 0x09 -> 0.1V tp 0.9V
+    StartSpeed = 0x0A;      // 0x00 to 0x64   [0-100]   starting speed if too high you will hear some cogging sound out from gear, set not too high
+    DriveMode = 0x01;       // 0x01 is Sine wave, 0x00 is square wave. Don't need to change, square wave seems not working well...
+    PhaseLMotor = 0x03;     // Don't need to change     not sure what is this, so leave it alone 
+    PhaseRMotor = 0x04;     // Don't need to change     not sure what is this, so leave it alone
+    MotorConfig = 0x07;     // Don't need to change     This is about choosing which wheel will be reverse
+    InitCheckSum = InitHeader1 + InitHeader2 + ForwardAcc + ForwardDelay + BrakeDis + TurnAcc + TurnDelay + AccTimeOfStart + SenRocker 
+                    + UnderVolt1 + UnderVolt2 + StartSpeed + DriveMode + PhaseLMotor + PhaseRMotor + MotorConfig;
+    
 }
 
 int XWheels::Init()
@@ -80,42 +103,6 @@ float XWheels::IntToFloat(int intValue)
     }
 }
 
-float XWheels::LowRPMCompensation_Right(float InRPM)
-{   
-    // Only rpm from 5 to 40 
-    float ComRPM;
-    float E7 = 0.0000001;
-    float E5 = 0.00001;
-    float xR = abs(InRPM);     // Right Wheel input rpm
-    float sign = abs(InRPM)/InRPM;
-
-    //float rightErr = (-9.76*E7*(xR*xR*xR*xR*xR) + 0.000117*(xR*xR*xR*xR) - 0.00519*(xR*xR*xR) + 0.103*(xR*xR) - 0.999*xR + 5.96)*2.0;
-    float rightErr = (-4.15*E7*(xR*xR*xR*xR*xR) + 4.65*E5*(xR*xR*xR*xR) - 0.00188*(xR*xR*xR) + 0.034*(xR*xR) - 0.357*xR + 4.06)*1.8;
-
-    printf("rightErr %f \n", rightErr);
-    ComRPM = InRPM + (sign)*abs(rightErr);
-
-    return ComRPM;
-
-}
-
-float XWheels::LowRPMCompensation_Left(float InRPM)
-{
-    // Only rpm from 5 to 40 
-    float ComRPM;
-    float E7 = 0.0000001;
-    float E5 = 0.00001;
-    float xL = abs(InRPM);     // Left Wheel input rpm
-    float sign = abs(InRPM)/InRPM;
-
-    float leftErr = (-4.15*E7*(xL*xL*xL*xL*xL) + 4.65*E5*(xL*xL*xL*xL) - 0.00188*(xL*xL*xL) + 0.034*(xL*xL) - 0.357*xL + 4.06)*1.85;
-    
-    printf("leftErr %f \n", leftErr);
-    ComRPM = InRPM + (sign)*abs(leftErr);
-
-    return ComRPM;
-}
-
 unsigned int XWheels::RPMToRaw(float rpm)
 {
   int raw_int;
@@ -145,6 +132,7 @@ unsigned int XWheels::RPMToRaw2(float rpm)
   int raw_int;
   unsigned int out_raw;
 
+    // First linear 
     if (rpm >= 0.0 && rpm < 40.0)
     {
         // map rpm to raw value
@@ -169,6 +157,7 @@ unsigned int XWheels::RPMToRaw2(float rpm)
     
   return out_raw;
 }
+
 void XWheels::waitUntilFourZero()
 {
     while (startTick)
@@ -208,25 +197,27 @@ void XWheels::waitUntilFourZero()
 
 void XWheels::ESCHandShake()
 {
+    printf("InitCheckSum %X\n", InitCheckSum);
     for(int k=1;k<=20;k++)
-    {
-        uart.putc(0x01);
-        uart.putc(0x11);
-        uart.putc(0x28);
-        uart.putc(0x02);
-        uart.putc(0x50);
-        uart.putc(0x32);
-        uart.putc(0x03);
-        uart.putc(0x1E);
-        uart.putc(0x83);
-        uart.putc(0x15);
-        uart.putc(0x06);
-        uart.putc(0x0A);
-        uart.putc(0x01);
-        uart.putc(0x03);
-        uart.putc(0x04);
-        uart.putc(0x07);
-        uart.putc(0x96);
+    {   
+        // This is like initial setup for the ESC
+        uart.putc(InitHeader1);
+        uart.putc(InitHeader2);
+        uart.putc(ForwardAcc);
+        uart.putc(ForwardDelay);
+        uart.putc(BrakeDis);
+        uart.putc(TurnAcc);
+        uart.putc(TurnDelay);
+        uart.putc(AccTimeOfStart);
+        uart.putc(SenRocker);
+        uart.putc(UnderVolt1);
+        uart.putc(UnderVolt2);
+        uart.putc(StartSpeed);
+        uart.putc(DriveMode);
+        uart.putc(PhaseLMotor);
+        uart.putc(PhaseRMotor);
+        uart.putc(MotorConfig);
+        uart.putc(InitCheckSum);
 
         if (k==1){
             wait_us(300);
@@ -262,6 +253,7 @@ void XWheels::DriveWheels(float rpm1, float rpm2)
     //printf("Out_Right %f\n", Out_RPM_Right);
     //printf("Out_Left %f\n", Out_RPM_Left);
 
+    /*
     if (rpm1 >= 1 && rpm1 <= 3)
     {
         rpm1 = 3;
@@ -270,7 +262,7 @@ void XWheels::DriveWheels(float rpm1, float rpm2)
     {
         rpm2 = 3;
     }
-    
+    */
     
     Out_RPM_Right = rpm1;
     Out_RPM_Left = rpm2;
@@ -286,8 +278,29 @@ void XWheels::DriveWheels(float rpm1, float rpm2)
     unsigned char Motor2hibyte = Motor2SpeedByte[0];
     unsigned char Motor2lobyte = Motor2SpeedByte[1];
 
-    unsigned char Modehibyte = 0x00;    // don't care 
-    unsigned char Modelobyte = 0x00;    // don't care
+    unsigned char Modehibyte = 0x00;   
+    unsigned char Modelobyte = 0x00;
+    /*
+    /// Forward or Backward (curve also)///
+    if ((Out_RPM_Right > 0.0 && Out_RPM_Left > 0.0) || (Out_RPM_Right < 0.0 && Out_RPM_Left < 0.0))
+    {
+        Modehibyte = 0xB4;
+        Modelobyte = 0x80;
+    }
+    /// Turn left or turn right (skidding)///
+    else if ((Out_RPM_Right > 0.0 && Out_RPM_Left < 0.0) || (Out_RPM_Right < 0.0 && Out_RPM_Left > 0.0))
+    {
+        Modehibyte = 0x00;
+        Modelobyte = 0x00;
+    }
+    /// Stop ///
+    else
+    {
+        Modehibyte = 0xB4;
+        Modelobyte = 0x00;
+    }
+        */
+
     unsigned char CheckSum = Header1 + Header2 + Motor1hibyte + Motor1lobyte + Motor2hibyte + Motor2lobyte + Modehibyte + Modelobyte;
 
     uart.putc(Header1);
