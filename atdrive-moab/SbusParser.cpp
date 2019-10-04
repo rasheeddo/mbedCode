@@ -1,4 +1,4 @@
-#include "mbed.h"
+//#include "mbed.h"
 
 #include "SbusParser.hpp"
 
@@ -12,8 +12,7 @@ SbusParser::SbusParser(struct sbus_udp_payload *sup) {
 
 //int missedChars = 0;
 int SbusParser::_processSbusMessage() {
-    /*
-    // comment this block off, made the KO propo works!
+
 	switch (_rxBuf[23]) {
 	// my transmitter always has 1 of these 4 bytes:
 	case 0x04:
@@ -25,7 +24,7 @@ int SbusParser::_processSbusMessage() {
 		//return _rxBuf[23];
 		return -1;
 	}
-    */
+
 	_sup->ch1 =   _rxBuf[0]			   | ((_rxBuf[1] & 0x07) << 8);
 	_sup->ch2 = ((_rxBuf[1] & 0xf8) >> 3) | ((_rxBuf[2] & 0x3f) << 5);
 	_sup->ch3 = ((_rxBuf[2] & 0xc0) >> 6) | ((_rxBuf[3] ) << 2) | ((_rxBuf[4] & 0x01) << 10);
