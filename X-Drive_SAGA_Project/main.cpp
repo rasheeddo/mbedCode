@@ -229,8 +229,8 @@ void set_mode_manual() {
     //pc.printf("ch4 %d\n", sbup.ch4);
 
     drive.vehicleControl(sbup.ch2, sbup.ch4, motorRPM);
-    pc.printf("rpm1 %f\n", motorRPM[0]);
-    pc.printf("rpm2 %f\n", motorRPM[1]);
+    //pc.printf("rpm1 %f\n", motorRPM[0]);
+    //pc.printf("rpm2 %f\n", motorRPM[1]);
     drive.DriveWheels(motorRPM[0],motorRPM[1]);
     //drive.DriveWheels(144.0,144.0);
 }
@@ -251,8 +251,8 @@ void set_mode_auto() {
     rpmR = drive.IntToFloat(Raw_rpmR);
     rpmL = drive.IntToFloat(Raw_rpmL);
     drive.DriveWheels(rpmR,rpmL);
-    printf("rpmR %f\n", rpmR);
-    printf("rpmL %f\n", rpmL);
+    //printf("rpmR %f\n", rpmR);
+    //printf("rpmL %f\n", rpmL);
 }
 
 /*
@@ -344,7 +344,6 @@ void Sbus_Rx_Interrupt() {
 	int c;
 
 	while (sbus_in.readable()) {
-
 		c = sbus_in.getc();
 		int status = sbusParser.rx_char(c);
 
@@ -401,19 +400,30 @@ void sbus_reTx_worker() {
 
 	while (true) {
 		flags_read = event_flags.wait_any(_SBUS_EVENT_FLAG, 100);
+        //pc.printf("_SBUS_EVENT_FLAG %X\n",_SBUS_EVENT_FLAG);
         //pc.printf("flags_read %X\n", flags_read);
         //pc.printf("Here");
-
+        //pc.printf("osFlagsError %X\n", osFlagsError);
 		if (flags_read & osFlagsError) {
 			u_printf("S.Bus timeout!\n");
+            pc.printf("S.Bus timeout!\n");
 			set_mode_sbus_failsafe();
 		} else if (sbup.failsafe) {
 			u_printf("S.Bus failsafe!\n");
+
+        
+            pc.printf("S.Bus failsafe!\n");
 			set_mode_sbus_failsafe();
 		} else {
-
-            //pc.printf("ch2 %d\n",sbup.ch2);
-            //pc.printf("ch4 %d\n",sbup.ch4);
+            
+            pc.printf("ch1 %d   ",sbup.ch1);
+            pc.printf("ch2 %d   ",sbup.ch2);
+            pc.printf("ch3 %d   ",sbup.ch3);
+            pc.printf("ch4 %d   ",sbup.ch4);
+            pc.printf("ch5 %d   ",sbup.ch5);
+            pc.printf("ch6 %d   ",sbup.ch6);
+            pc.printf("ch7 %d   ",sbup.ch7);
+            pc.printf("ch8 %d\n",sbup.ch8);
 
 			if (sbup.ch5 < 688) {
 
@@ -515,12 +525,12 @@ void eth_callback(nsapi_event_t status, intptr_t param) {
 int main() {
 
         /// X Drive Initialize ///
-    int initOK;
-    initOK = drive.Init();
-    if(initOK == 1)
-    {
-        pc.printf("Initialized OK!!!\n");
-    }
+    //int initOK;
+    //initOK = drive.Init();
+    //if(initOK == 1)
+    //{
+    //    pc.printf("Initialized OK!!!\n");
+    //}
     ////////////////////////////
     
 	//  ######################################
