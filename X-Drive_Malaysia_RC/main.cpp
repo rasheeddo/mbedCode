@@ -10,7 +10,7 @@
 #include "XWheels.hpp"
 //#include "UbloxParser.hpp"
 #include "Compass.hpp"
-#include "EthernetInterface.h"
+//#include "EthernetInterface.h"
 //#include "ROBOT_CONFIG.hpp"
 //////////////////////////////////////////////////////////////
 // ROBOT_CONFIG //
@@ -86,10 +86,10 @@ int gpsMessageLen;
 /////////////////////////////// Classes /////////////////////////////// 
 // Network interface //
 
-EthernetInterface net;
-UDPSocket rx_sock; // one, single thread for RX
-UDPSocket aux_serial_sock; // one, single thread for RX
-UDPSocket tx_sock; // tx will be completely non-blocking
+//EthernetInterface net;
+//UDPSocket rx_sock; // one, single thread for RX
+//UDPSocket aux_serial_sock; // one, single thread for RX
+//UDPSocket tx_sock; // tx will be completely non-blocking
 
 
 // THREAD //
@@ -135,7 +135,7 @@ long map(long x, long in_min, long in_max, long out_min, long out_max)
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
-
+/*
 void u_printf(const char *fmt, ...) {
 	va_list args;
 	char buffer[1500];
@@ -152,7 +152,8 @@ void u_printf(const char *fmt, ...) {
 		return;
 	}
 }
-
+*/
+/*
 void udp_rx_worker() {
 	
 	//Here we receive throttle and steering control from the auto-pilot computer
@@ -183,7 +184,7 @@ void udp_rx_worker() {
 		}
 	}
 }
-
+*/
 /*
 void aux_serial_worker() {
 
@@ -353,7 +354,7 @@ void Sbus_Rx_Interrupt() {
 		}
 	}
 }
-
+/*
 void Gps_Rx_Interrupt() {
 	int c;
 	while (gps_in.readable()) {
@@ -393,7 +394,7 @@ void gps_reTx_worker() {
 		}
 	}
 }
-
+*/
 
 void sbus_reTx_worker() {
 
@@ -405,10 +406,10 @@ void sbus_reTx_worker() {
         //pc.printf("Here");
 
 		if (flags_read & osFlagsError) {
-			u_printf("S.Bus timeout!\n");
+			//u_printf("S.Bus timeout!\n");
 			set_mode_sbus_failsafe();
 		} else if (sbup.failsafe) {
-			u_printf("S.Bus failsafe!\n");
+			//u_printf("S.Bus failsafe!\n");
 			set_mode_sbus_failsafe();
 		} else {
 
@@ -427,18 +428,18 @@ void sbus_reTx_worker() {
 
 				set_mode_auto();
 			}
-			
+			/*
 			int retval = tx_sock.sendto(_AUTOPILOT_IP_ADDRESS, sbus_port,
 					(char *) &sbup, sizeof(struct sbus_udp_payload));
 
 			if (retval < 0 && NETWORK_IS_UP) {
 				printf("UDP socket error in sbus_reTx_worker\n");
 			}
-			
+			*/
 		}
 	}
 }
-
+/*
 void compass_worker() {
 
 	int16_t compass_XYZ[3];
@@ -474,8 +475,8 @@ void compass_worker() {
 		}
 	}
 }
-
-
+*/
+/*
 void eth_callback(nsapi_event_t status, intptr_t param) {
 	const char *ip;
 
@@ -510,7 +511,7 @@ void eth_callback(nsapi_event_t status, intptr_t param) {
 			break;
 	}
 }
-
+*/
 
 int main() {
 
@@ -522,7 +523,7 @@ int main() {
         pc.printf("Initialized OK!!!\n");
     }
     ////////////////////////////
-    
+    /*
 	//  ######################################
 	//  #########################################
 	//  ###########################################
@@ -556,7 +557,7 @@ int main() {
 	//  ###########################################
 	//  #########################################
 	//  ######################################
-    
+    */
     
 	sbus_in.format(8, SerialBase::Even, 2);  // S.Bus is 8E2
 	sbus_in.attach(&Sbus_Rx_Interrupt);
@@ -577,12 +578,12 @@ int main() {
 	hb_led.period(0.02);
 	hb_led.write(0.0);
 
-    
+    /*
 	// Look for the compass:
 	if (compass.init() < 1) {
 		u_printf("Failed to initialize compass\n");
 	}
-
+    */
 
 	for (int ct=0; true; ++ct){
 
@@ -601,7 +602,7 @@ int main() {
 				//Check_Pgm_Button();
 		}
 
-		u_printf("heeartbeatZ: %d\n", ct);
+		//u_printf("heeartbeatZ: %d\n", ct);
     
 		// Report motor values (for convience when setting trim)
 		//uint16_t sbus_a = motorControl.get_value_a();
@@ -619,9 +620,9 @@ int main() {
    
 	// Close the socket and bring down the network interface
 	
-    rx_sock.close();
-    tx_sock.close();
-	net.disconnect();
+    //rx_sock.close();
+    //tx_sock.close();
+	//net.disconnect();
     
 
 	return 0;

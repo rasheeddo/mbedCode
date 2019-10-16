@@ -18,6 +18,7 @@ int main()
     }
     while (true){
         drive.DriveWheels(60.0, 60.0);
+        pc.printf("here\n");
     }
     
 }
