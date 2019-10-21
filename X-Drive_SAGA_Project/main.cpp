@@ -225,14 +225,14 @@ void set_mode_manual() {
 	myledG = 1;
 	myledB = 0;
 	//compass.set_leds(0, 15, 0);
-    //pc.printf("ch2 %d\n", sbup.ch2);
-    //pc.printf("ch4 %d\n", sbup.ch4);
+    pc.printf("ch1 %d\n", sbup.ch1);
+    pc.printf("ch2 %d\n", sbup.ch2);
 
-    drive.vehicleControl(sbup.ch2, sbup.ch4, motorRPM);
-    //pc.printf("rpm1 %f\n", motorRPM[0]);
-    //pc.printf("rpm2 %f\n", motorRPM[1]);
+    drive.vehicleControl(sbup.ch1, sbup.ch2, motorRPM);
+    pc.printf("rpm1 %f\n", motorRPM[0]);
+    pc.printf("rpm2 %f\n", motorRPM[1]);
     drive.DriveWheels(motorRPM[0],motorRPM[1]);
-    //drive.DriveWheels(144.0,144.0);
+    //drive.DriveWheels(50.0,50.0);
 }
 
 void set_mode_auto() {
@@ -397,6 +397,7 @@ void gps_reTx_worker() {
 void sbus_reTx_worker() {
 
 	uint32_t flags_read;
+    bool stop_trig = false;
 
 	while (true) {
 		flags_read = event_flags.wait_any(_SBUS_EVENT_FLAG, 100);
@@ -415,7 +416,7 @@ void sbus_reTx_worker() {
             pc.printf("S.Bus failsafe!\n");
 			set_mode_sbus_failsafe();
 		} else {
-            
+            /*
             pc.printf("ch1 %d   ",sbup.ch1);
             pc.printf("ch2 %d   ",sbup.ch2);
             pc.printf("ch3 %d   ",sbup.ch3);
@@ -424,19 +425,26 @@ void sbus_reTx_worker() {
             pc.printf("ch6 %d   ",sbup.ch6);
             pc.printf("ch7 %d   ",sbup.ch7);
             pc.printf("ch8 %d\n",sbup.ch8);
-
-			if (sbup.ch5 < 688) {
-
-                set_mode_stop();
-
-			} else if (sbup.ch5 < 1360) {
+            */
+            if (sbup.ch7 < 1050 && sbup.ch7 > 950 && sbup.ch6 < 1500 && !stop_trig) {
 
                 set_mode_manual();
+                pc.printf("manual\n");
 
-			} else {
+			} else if (sbup.ch7 > 1050 && sbup.ch8 > 1050 && sbup.ch6 < 1500 && !stop_trig){
 
 				set_mode_auto();
-			}
+                pc.printf("auto\n");
+
+			} else {
+                pc.printf("stop\n");
+                set_mode_stop();
+                if (sbup.ch5 > 1500){
+                    stop_trig = false;
+                } else {
+                    stop_trig = true;
+                }
+            }
 			
 			int retval = tx_sock.sendto(_AUTOPILOT_IP_ADDRESS, sbus_port,
 					(char *) &sbup, sizeof(struct sbus_udp_payload));
@@ -525,12 +533,12 @@ void eth_callback(nsapi_event_t status, intptr_t param) {
 int main() {
 
         /// X Drive Initialize ///
-    //int initOK;
-    //initOK = drive.Init();
-    //if(initOK == 1)
-    //{
-    //    pc.printf("Initialized OK!!!\n");
-    //}
+    int initOK;
+    initOK = drive.Init();
+    if(initOK == 1)
+    {
+        pc.printf("Initialized OK!!!\n");
+    }
     ////////////////////////////
     
 	//  ######################################
