@@ -15,9 +15,9 @@
 //////////////////////////////////////////////////////////////
 // ROBOT_CONFIG //
 // Office LAN use
-#include "ROBOT_CONFIG_XDRIVE_OfficeLAN.hpp"
+//#include "ROBOT_CONFIG_XDRIVE_OfficeLAN.hpp"
 // Field LAN Use
-//#include "ROBOT_CONFIG_XDRIVE_GLiNet.hpp"
+#include "ROBOT_CONFIG_XDRIVE_GLiNet.hpp"
 ///////////////////////
 
 // This is the "followbot" prototype that I use in AttracLab:
@@ -161,18 +161,21 @@ void udp_rx_worker() {
 	char inputBuffer[33];
 	inputBuffer[32] = 0;
 
-	uint16_t *control = (uint16_t *) &(inputBuffer[0]);
+	//uint16_t *control = (uint16_t *) &(inputBuffer[0]);
+    float *control = (float *) &(inputBuffer[0]);
 
 	rx_sock.set_blocking(true);
 	while (true) {
 
 		int n = rx_sock.recvfrom(&sockAddr, inputBuffer, 32);
-
-		if (n == 2*sizeof(uint16_t)) {
+           //(n == 2*sizeof(uint16_t))
+		if (n == 2*sizeof(float)) {
 			//auto_ch2 = control[0];
 			//auto_ch4 = control[1];
-            Raw_rpmR = control[0];
-            Raw_rpmL = control[1];
+            //Raw_rpmR = control[0];
+            //Raw_rpmL = control[1];
+            rpmR = control[0];
+            rpmL = control[1];
 
 		} else if (n > 0) {
 			inputBuffer[n] = 0;
@@ -225,10 +228,10 @@ void set_mode_manual() {
 	myledG = 1;
 	myledB = 0;
 	//compass.set_leds(0, 15, 0);
-    pc.printf("ch1 %d\n", sbup.ch1);
+    pc.printf("ch3 %d\n", sbup.ch3);
     pc.printf("ch2 %d\n", sbup.ch2);
 
-    drive.vehicleControl(sbup.ch1, sbup.ch2, motorRPM);
+    drive.vehicleControl(sbup.ch3, sbup.ch2, motorRPM);
     pc.printf("rpm1 %f\n", motorRPM[0]);
     pc.printf("rpm2 %f\n", motorRPM[1]);
     drive.DriveWheels(motorRPM[0],motorRPM[1]);
@@ -248,11 +251,11 @@ void set_mode_auto() {
     //pc.printf("ch4_map_auto %d\n", ch4_map);
     //drive.vehicleControl(ch2_map, ch4_map, motorRPM);
     //drive.DriveWheels(motorRPM[0],motorRPM[1]);
-    rpmR = drive.IntToFloat(Raw_rpmR);
-    rpmL = drive.IntToFloat(Raw_rpmL);
+    //rpmR = drive.IntToFloat(Raw_rpmR);
+    //rpmL = drive.IntToFloat(Raw_rpmL);
     drive.DriveWheels(rpmR,rpmL);
-    //printf("rpmR %f\n", rpmR);
-    //printf("rpmL %f\n", rpmL);
+    printf("rpmR %f\n", rpmR);
+    printf("rpmL %f\n", rpmL);
 }
 
 /*

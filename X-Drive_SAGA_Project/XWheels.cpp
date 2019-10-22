@@ -38,7 +38,7 @@ XWheels::XWheels()
     ForwardAcc = 0x32;      // 0x00 to 0x64   [0-100]   An acceleration when changing speed value
     ForwardDelay = 0x00;    // 0x00 t0 0x05   [0-5]     A delay before start to go
     BrakeDis = 0x14;        // 0x00 to 0x64   [0-100]   Brake distance, should be as short as possible (rigid brake)
-    TurnAcc = 0x32;         // 0x00 to 0x64   [0-100]   Turning acceleration, when two wheels has reverse direction
+    TurnAcc = 0x14;         // 0x00 to 0x64   [0-100]   Turning acceleration, when two wheels has reverse direction
     TurnDelay = 0x01;       // 0x00 t0 0x05   [0-5]     A delay before start turning
     AccTimeOfStart = 0x00;  // 0x00 to 0x32   [0-50]    increase this will make wheels slower
     SenRocker = 0x83;       // Don't need to change     this is for curving motion, we have our own calculation.
@@ -348,7 +348,7 @@ void XWheels::vehicleControl(int UD_ch, int LR_ch, float MotorRPM[2])
     // user push ch4 left or right, UGV turns left or right, two wheels same speed but reverse direction
     else if(UD_ch <= MAX_DEADBAND && UD_ch >= MIN_DEADBAND && (LR_ch >= MAX_DEADBAND || LR_ch <= MIN_DEADBAND))
     {
-        MotorRPM[1] = (float)map(LR_ch, MIN_STICK, MAX_STICK, -MAX_RPM/2, MAX_RPM/2);
+        MotorRPM[1] = (float)map(LR_ch, MIN_STICK, MAX_STICK, -MAX_RPM/2.4, MAX_RPM/2.4);
         MotorRPM[0] = -MotorRPM[1];
     }
     /////////////////////////////////////////////////////////// CURVES /////////////////////////////////////////////////////////////////////
