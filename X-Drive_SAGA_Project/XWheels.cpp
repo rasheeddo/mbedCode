@@ -313,7 +313,7 @@ void XWheels::DriveWheels(float rpm1, float rpm2)
     uart.putc(Modelobyte);
     uart.putc(CheckSum);
 
-    wait_ms(23);                      // DON'T change this delay, it's from hacking
+    wait_ms(23);//wait_ms(23);                      // DON'T change this delay, it's from hacking
 
   
 }

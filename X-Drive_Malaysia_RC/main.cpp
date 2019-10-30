@@ -229,7 +229,7 @@ void set_mode_manual() {
     //pc.printf("ch2 %d\n", sbup.ch2);
     //pc.printf("ch4 %d\n", sbup.ch4);
 
-    drive.vehicleControl(sbup.ch2, sbup.ch4, motorRPM);
+    drive.vehicleControl(sbup.ch3, sbup.ch4, motorRPM);
     pc.printf("rpm1 %f\n", motorRPM[0]);
     pc.printf("rpm2 %f\n", motorRPM[1]);
     drive.DriveWheels(motorRPM[0],motorRPM[1]);

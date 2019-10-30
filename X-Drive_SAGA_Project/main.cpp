@@ -85,7 +85,7 @@ int gpsMessageLen;
 
 /////////////////////////////// Classes /////////////////////////////// 
 // Network interface //
-
+ 
 EthernetInterface net;
 UDPSocket rx_sock; // one, single thread for RX
 UDPSocket aux_serial_sock; // one, single thread for RX
@@ -95,8 +95,8 @@ UDPSocket tx_sock; // tx will be completely non-blocking
 // THREAD //
 Thread udp_rx_thread;
 Thread sbus_reTx_thread;
-Thread gps_reTx_thread;
-Thread compass_thread;
+//Thread gps_reTx_thread;
+//Thread compass_thread;
 //Thread aux_serial_thread;
 //Thread gp_interrupt_messages_thread;
 EventFlags event_flags;
@@ -108,7 +108,7 @@ XWheels drive;      // use Brushless wheels class for UGV
 // S.Bus is 100000Hz, 8E2, electrically inverted
 RawSerial sbus_in(NC, PD_2, 100000);  // tx, then rx
 //RawSerial sbus_in(NC, PA_3, 100000);  // tx, then rx
-RawSerial gps_in(PE_8, PE_7, 38400);  //tx, then rx
+//RawSerial gps_in(PE_8, PE_7, 38400);  //tx, then rx
 //RawSerial gps_in(PG_14, PG_9, 115200);  // tx, then rx
 //RawSerial aux_serial1(PA_0, NC, 38400);
 //InterruptIn shaft_encoder(PD_0, PullUp);
@@ -144,13 +144,13 @@ void u_printf(const char *fmt, ...) {
 	va_start(args, fmt);
 	bufLen = vsnprintf(buffer, 1499, fmt, args);
 	va_end(args);
-
+    
 	int retval = tx_sock.sendto(_BROADCAST_IP_ADDRESS, debug_port, buffer, bufLen);
 
 	if (retval < 0 && NETWORK_IS_UP) {
 		printf("socket error in u_printf() function\n");
 		return;
-	}
+    }
 }
 
 void udp_rx_worker() {
@@ -187,25 +187,6 @@ void udp_rx_worker() {
 	}
 }
 
-/*
-void aux_serial_worker() {
-
-	SocketAddress sockAddr;
-	char inputBuffer[33];
-	inputBuffer[32] = 0;
-
-	aux_serial_sock.set_blocking(true);
-	while (true) {
-
-		int n = aux_serial_sock.recvfrom(&sockAddr, inputBuffer, 32);
-		//u_printf("   for aux serial:  %s\n", inputBuffer);
-		for (int i=0; i<n; ++i) {
-			aux_serial1.putc(inputBuffer[i]);
-		}
-	}
-}
-*/
-
 void set_mode_sbus_failsafe() {
 	myledR = 0;
 	myledG = 0;
@@ -227,120 +208,25 @@ void set_mode_manual() {
 	myledR = 0;
 	myledG = 1;
 	myledB = 0;
-	//compass.set_leds(0, 15, 0);
+	
     pc.printf("ch3 %d\n", sbup.ch3);
     pc.printf("ch2 %d\n", sbup.ch2);
-
     drive.vehicleControl(sbup.ch3, sbup.ch2, motorRPM);
-    pc.printf("rpm1 %f\n", motorRPM[0]);
-    pc.printf("rpm2 %f\n", motorRPM[1]);
+    //pc.printf("rpm1 %f\n", motorRPM[0]);
+    //pc.printf("rpm2 %f\n", motorRPM[1]);
     drive.DriveWheels(motorRPM[0],motorRPM[1]);
-    //drive.DriveWheels(50.0,50.0);
+    
 }
 
 void set_mode_auto() {
 	myledR = 0;
 	myledG = 0;
 	myledB = 1;
-	//compass.set_leds(0, 0, 15);
-    //pc.printf("autoch2 %d\n", auto_ch2);
-    //pc.printf("autoch4 %d\n", auto_ch4);
-    //ch2_map = map(auto_ch2,368,1680,100,-100);       // map raw PWM value to understandable scale like -100 to 100 , 0 is mid 
-    //ch4_map = map(auto_ch4,368,1680,-100,100);
-    //pc.printf("ch2_map_auto %d\n", ch2_map);
-    //pc.printf("ch4_map_auto %d\n", ch4_map);
-    //drive.vehicleControl(ch2_map, ch4_map, motorRPM);
-    //drive.DriveWheels(motorRPM[0],motorRPM[1]);
-    //rpmR = drive.IntToFloat(Raw_rpmR);
-    //rpmL = drive.IntToFloat(Raw_rpmL);
+	
     drive.DriveWheels(rpmR,rpmL);
     printf("rpmR %f\n", rpmR);
     printf("rpmL %f\n", rpmL);
 }
-
-/*
-void Gpin_Interrupt_Shaft() {
-
-	uint64_t ts = rtos::Kernel::get_ms_count();
-	//if (ts - _last_shaft_fall > 25) {
-		_last_shaft_fall = ts;
-		event_flags.set(_SHAFT_FALL_EVENT_FLAG);
-	//}
-}
-
-void Gpin_Interrupt_Pgm() {
-
-	if (pgm_switch.read()) {
-		_last_pgm_rise = rtos::Kernel::get_ms_count();
-	} else {
-		_last_pgm_fall = rtos::Kernel::get_ms_count();
-	}
-}
-
-void Check_Pgm_Button() {
-	// We do all this time-stamp weirdness to de-bounce the switch
-	uint64_t ts_ms = rtos::Kernel::get_ms_count();
-
-	// Switch must be stable for at least 30ms:
-	if ((ts_ms - _last_pgm_fall > 30) && (ts_ms - _last_pgm_rise > 30)) {
-		// current stable value:
-		uint8_t val = pgm_switch.read();
-		if (_pgm_value_debounce != val) { // debounce value has changed
-			_pgm_value_debounce = val;
-			if (val) {
-				_last_pgm_rise_debounce = ts_ms;
-				_pgm_notice_sent = false;
-			} else {
-				_last_pgm_fall_debounce = ts_ms;
-			}
-		}
-	}
-
-	if (!_pgm_notice_sent) {
-		if (!_pgm_value_debounce) {
-			if (ts_ms - _last_pgm_rise_debounce > 300) {
-
-				int retval = tx_sock.sendto(_BROADCAST_IP_ADDRESS, button_port,
-					&ts_ms, sizeof(ts_ms));
-
-				if (retval < 0 && NETWORK_IS_UP) {
-					printf("UDP socket error in Gpio_Tx_worker\n");
-				}
-				_pgm_notice_sent = true;
-			}
-		}
-	}
-}
-
-
-void Gpio_Tx_Worker() {
-	uint32_t flags_read;
-	while (true) {
-		flags_read = event_flags.wait_any(_SHAFT_FALL_EVENT_FLAG | _PGM_FALL_EVENT_FLAG, 1013);
-
-		if (flags_read & osFlagsError) {
-
-			//u_printf("GPIn Interrupt timeout!\n");
-
-		} else {
-			if (flags_read & _SHAFT_FALL_EVENT_FLAG) {
-				//u_printf("  SHAFT ENCDODER\n");
-				int retval = tx_sock.sendto(_BROADCAST_IP_ADDRESS, odometry_port,
-					&_last_shaft_fall, sizeof(_last_shaft_fall));
-
-				if (retval < 0 && NETWORK_IS_UP) {
-					printf("UDP socket error in Gpio_Tx_worker\n");
-				}
-			}
-    
-		//	if (flags_read & _PGM_FALL_EVENT_FLAG) {
-		//		u_printf(" *********************** BUTTON! ****************\n");
-		//	}
-    
-		}
-	}
-}
-*/
 
 void Sbus_Rx_Interrupt() {
 
@@ -356,58 +242,14 @@ void Sbus_Rx_Interrupt() {
 	}
 }
 
-void Gps_Rx_Interrupt() {
-	int c;
-	while (gps_in.readable()) {
-
-		c = gps_in.getc();
-		_gpsRxBuf[_gpsRxBufIdx] = c;
-		_gpsRxBufIdx++;
-
-		if ((c == 0x0a) || (_gpsRxBufIdx > 1400)) {
-			memcpy(_gpsTxBuf, _gpsRxBuf, _gpsRxBufIdx);
-			gpsMessageLen = _gpsRxBufIdx;
-			event_flags.set(_GPS_EVENT_FLAG);
-			_gpsRxBufIdx = 0;
-		}
-	}
-}
-
-void gps_reTx_worker() {
-
-	uint32_t flags_read;
-
-	while (true) {
-		flags_read = event_flags.wait_any(_GPS_EVENT_FLAG, 1200);
-
-		if (flags_read & osFlagsError) {
-
-			u_printf("GPS timeout!\n");
-
-		} else {
-
-			int retval = tx_sock.sendto(_BROADCAST_IP_ADDRESS, gps_port_nmea,
-					_gpsTxBuf, gpsMessageLen);
-
-			if (retval < 0 && NETWORK_IS_UP) {
-				printf("UDP socket error in gps_reTx_worker\n");
-			}
-		}
-	}
-}
-
-
 void sbus_reTx_worker() {
 
 	uint32_t flags_read;
     bool stop_trig = false;
-
+    printf("sbus worker start\n");
 	while (true) {
 		flags_read = event_flags.wait_any(_SBUS_EVENT_FLAG, 100);
-        //pc.printf("_SBUS_EVENT_FLAG %X\n",_SBUS_EVENT_FLAG);
-        //pc.printf("flags_read %X\n", flags_read);
-        //pc.printf("Here");
-        //pc.printf("osFlagsError %X\n", osFlagsError);
+
 		if (flags_read & osFlagsError) {
 			u_printf("S.Bus timeout!\n");
             pc.printf("S.Bus timeout!\n");
@@ -429,12 +271,12 @@ void sbus_reTx_worker() {
             pc.printf("ch7 %d   ",sbup.ch7);
             pc.printf("ch8 %d\n",sbup.ch8);
             */
-            if (sbup.ch7 < 1050 && sbup.ch7 > 950 && sbup.ch6 < 1500 && !stop_trig) {
+            if (sbup.ch7 < 1050 && sbup.ch7 > 950 && sbup.ch8 < 1050 && sbup.ch8 > 950 && sbup.ch6 < 1500 && !stop_trig) {
 
                 set_mode_manual();
                 pc.printf("manual\n");
 
-			} else if (sbup.ch7 > 1050 && sbup.ch8 > 1050 && sbup.ch6 < 1500 && !stop_trig){
+			} else if (sbup.ch7 > 1050 && sbup.ch7 < 1100 && sbup.ch8 > 1050 && sbup.ch8 < 1100 && sbup.ch6 < 1500 && !stop_trig){
 
 				set_mode_auto();
                 pc.printf("auto\n");
@@ -459,43 +301,6 @@ void sbus_reTx_worker() {
 		}
 	}
 }
-
-void compass_worker() {
-
-	int16_t compass_XYZ[3];
-
-	int count = 0;
-	while (true) {
-		if (compass.get_data(compass_XYZ)) {
-
-			int retval = tx_sock.sendto(_BROADCAST_IP_ADDRESS, compass_port,
-					(char *) compass_XYZ, 6);
-
-			// This could produce a lot of messages...
-			//if (retval < 0 && NETWORK_IS_UP) {
-			//	printf("UDP socket error in sbus_reTx_worker\n");
-			//}
-		}
-
-		wait(0.05); // 20Hz
-
-		count++;
-		if (count > 100) {
-			// Just in case the compass gets disconnected, we'll ocasionally re-init
-			compass.init();
-			count = 0;
-			// UBLOX config command to enable 5 updates per second:
-			const char UBX_CFG_RATE[] = {
-					0xb5, 0x62, 0x06, 0x08, 0x06, 0x00,
-					0x28, 0x00, 0x05, 0x00, 0x00, 0x00, 0x41, 0xb8};
-
-			for (int i=0; i<14; i++) {
-				gps_in.putc(UBX_CFG_RATE[i]);
-			}
-		}
-	}
-}
-
 
 void eth_callback(nsapi_event_t status, intptr_t param) {
 	const char *ip;
@@ -542,6 +347,10 @@ int main() {
     {
         pc.printf("Initialized OK!!!\n");
     }
+
+    sbus_in.format(8, SerialBase::Even, 2);  // S.Bus is 8E2
+	sbus_in.attach(&Sbus_Rx_Interrupt);
+	sbus_reTx_thread.start(sbus_reTx_worker);
     ////////////////////////////
     
 	//  ######################################
@@ -549,7 +358,7 @@ int main() {
 	//  ###########################################
 	//   BEGIN:  setup network and udp socket
 	//  ############################################
-
+    
 	printf("\n\nStarting the network...\n");
 
 	net.attach(&eth_callback);
@@ -564,13 +373,9 @@ int main() {
 	tx_sock.bind(12347);
 	tx_sock.set_blocking(false);
 
-	aux_serial_sock.open(&net);
-	aux_serial_sock.bind(31341);
-
 	net.connect();
 
 	udp_rx_thread.start(udp_rx_worker);
-    //aux_serial_thread.start(aux_serial_worker);
 
 	//  ############################################
 	//   END:  setup network and udp socket
@@ -578,66 +383,27 @@ int main() {
 	//  #########################################
 	//  ######################################
     
-    
-	sbus_in.format(8, SerialBase::Even, 2);  // S.Bus is 8E2
-	sbus_in.attach(&Sbus_Rx_Interrupt);
-    gps_in.attach(&Gps_Rx_Interrupt);
-
-	sbus_reTx_thread.start(sbus_reTx_worker);
-    
-    gps_reTx_thread.start(gps_reTx_worker);
-	compass_thread.start(compass_worker);
-	//gp_interrupt_messages_thread.start(Gpio_Tx_Worker);
-    
-	//shaft_encoder.rise(&Gpin_Interrupt_Shaft);
-	//shaft_encoder.fall(&Gpin_Interrupt_Shaft);
-
-	//pgm_switch.rise(&Gpin_Interrupt_Pgm);
-	//pgm_switch.fall(&Gpin_Interrupt_Pgm);
 
 	hb_led.period(0.02);
 	hb_led.write(0.0);
-
-    
-	// Look for the compass:
-	if (compass.init() < 1) {
-		u_printf("Failed to initialize compass\n");
-	}
-
 
 	for (int ct=0; true; ++ct){
 
 		for (int i=0; i < 11; ++i) {
 				float brightness = i/10.0;
 				hb_led.write(brightness);
-				//motorControl.trigger_pw_out();
 				wait(0.02);
-				//Check_Pgm_Button();
+
 		}
 		for (int i=0; i < 11; ++i) {
 				float brightness = 1.0 - i/10.0;
 				hb_led.write(brightness);
-				//motorControl.trigger_pw_out();
 				wait(0.02);
-				//Check_Pgm_Button();
 		}
 
 		u_printf("heeartbeatZ: %d\n", ct);
-    
-		// Report motor values (for convience when setting trim)
-		//uint16_t sbus_a = motorControl.get_value_a();
-		//float pw_a = motorControl.get_pw_a();
-		//u_printf("steering: %d %f\n", sbus_a, pw_a);
-
-		//uint16_t sbus_b = motorControl.get_value_b();
-		//float pw_b = motorControl.get_pw_b();
-		//u_printf("throttle: %d %f\n", sbus_b, pw_b);
-        
 	}
     
-
-    
-   
 	// Close the socket and bring down the network interface
 	
     rx_sock.close();
