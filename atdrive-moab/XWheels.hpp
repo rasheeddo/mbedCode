@@ -74,8 +74,8 @@ class XWheels
         float MaxRPM;
         unsigned int RawInt1;
         unsigned int RawInt2;
-        unsigned char Motor1SpeedByte[2];
-        unsigned char Motor2SpeedByte[2];
+        //unsigned char Motor1SpeedByte[2];
+        //unsigned char Motor2SpeedByte[2];
         // normal sending
         unsigned char Header1;
         unsigned char Header2;

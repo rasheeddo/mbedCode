@@ -55,6 +55,7 @@ Thread gps_reTx_thread;
 Thread imu_thread;
 Thread gp_interrupt_messages_thread;
 
+
 // Heartbeat LED:
 PwmOut hb_led(PA_6);
 
@@ -227,6 +228,7 @@ void set_mode_manual() {
     //pc.printf("ch2 %d\n", sbup.ch2);
     //pc.printf("ch4 %d\n", sbup.ch4);
     drive.DriveWheels(motorRPM[0],motorRPM[1]);
+    
 }
 
 void set_mode_auto() {
@@ -351,7 +353,7 @@ void gps_reTx_worker() {
 			u_printf("GPS timeout!\n");
 
 		} else {
-
+            
 			int retval = tx_sock.sendto(_BROADCAST_IP_ADDRESS, gps_port_nmea,
 					_gpsTxBuf, gpsMessageLen);
 
@@ -395,6 +397,8 @@ void sbus_reTx_worker() {
 		}
 	}
 }
+
+
 
 
 void imu_worker() {
@@ -566,7 +570,7 @@ void eth_callback(nsapi_event_t status, intptr_t param) {
 
  
 int main() {
-    
+
     // X Drive Initialize ///
     int initOK;
     initOK = drive.Init();
@@ -574,6 +578,7 @@ int main() {
     {
         pc.printf("Initialized OK!!!\n");
     }
+    
 
 	//  ######################################
 	//  #########################################
@@ -596,6 +601,21 @@ int main() {
 	//  #########################################
 	//  ######################################
 
+    // Serial ports
+	sbus_in.format(8, SerialBase::Even, 2);  // S.Bus is 8E2
+	sbus_in.attach(&Sbus_Rx_Interrupt);
+
+	//gps_in.attach(&Gps_Rx_Interrupt);
+
+    // Background threads
+	
+	sbus_reTx_thread.start(sbus_reTx_worker);
+	gps_reTx_thread.start(gps_reTx_worker);
+    
+
+
+
+    udp_rx_thread.start(udp_rx_worker);
 
 
 	// UDP Sockets
@@ -607,18 +627,8 @@ int main() {
 	tx_sock.set_blocking(false);
     
 
-	// Serial ports
-	sbus_in.format(8, SerialBase::Even, 2);  // S.Bus is 8E2
-	sbus_in.attach(&Sbus_Rx_Interrupt);
 
-	gps_in.attach(&Gps_Rx_Interrupt);
-
-
-	// Background threads
-	udp_rx_thread.start(udp_rx_worker);
-	sbus_reTx_thread.start(sbus_reTx_worker);
-	gps_reTx_thread.start(gps_reTx_worker);
-	//imu_thread.start(imu_worker);
+	imu_thread.start(imu_worker);
 
 
 	pgm_switch.rise(&Gpin_Interrupt_Pgm);

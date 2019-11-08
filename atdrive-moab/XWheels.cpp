@@ -248,6 +248,8 @@ void XWheels::DriveWheels(float rpm1, float rpm2)
 {  
     float Out_RPM_Right;
     float Out_RPM_Left;
+    unsigned char Motor1SpeedByte[2];
+    unsigned char Motor2SpeedByte[2];
 
     //printf("Out_Right %f\n", Out_RPM_Right);
     //printf("Out_Left %f\n", Out_RPM_Left);
