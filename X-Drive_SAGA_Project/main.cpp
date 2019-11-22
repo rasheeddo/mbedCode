@@ -15,9 +15,9 @@
 //////////////////////////////////////////////////////////////
 // ROBOT_CONFIG //
 // Office LAN use
-#include "ROBOT_CONFIG_XDRIVE_OfficeLAN.hpp"
+//#include "ROBOT_CONFIG_XDRIVE_OfficeLAN.hpp"
 // Field LAN Use
-//#include "ROBOT_CONFIG_XDRIVE_GLiNet.hpp"
+#include "ROBOT_CONFIG_XDRIVE_GLiNet.hpp"
 ///////////////////////
 
 // This is the "followbot" prototype that I use in AttracLab:
